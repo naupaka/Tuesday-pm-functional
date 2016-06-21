@@ -14,13 +14,123 @@ knitr::opts_chunk$set(echo = TRUE)
 Start by putting up objectives/tasks that students will be working though:
 
 1. Import a raster — A lidar canopy height model (lidar/Teak_lidarCHM.tif)
-For the CHM, set values == 0 to NA (not trees)
-1. Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that <2m is generally grasses / understory, <6m small trees,and the rest are tall trees. A function could import the desired thresholds. Visualize density and plot vertical cutoff lines.
-1. Plot the classified raster, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/  for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
+1. For the CHM, set values == 0 to NA (not trees)
+1. Visualize density and plot vertical cutoff lines.
+1. Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that 6m is generally understory, 10m small trees,and the rest are tall trees. A function could import the desired thresholds. 
+1. Plot the classified raster, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/ for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
 1. Export the plot figure to a pdf – publishable
 1. Export the classified raster as a geotiff with NaFlagg = -9999 to an outputs folder.
 
-
 ```{r}
+# load library
+library("raster")
+
+chm_file <- "../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif"
+chm <- raster(chm_file)
+
+# quick sanity check
+plot(chm)
+
+# set 0 values
+chm[chm == 0] <- NA
+plot(chm)
+
+# check dinsity plot
+density(chm)
+
+# Reclassify raster values
+# make the matrix to reclassify
+# Lowest height class is 1
+
+height.class.m <- c(0, 6, 1,
+					6, 30, 2,
+					30, 50, 3,
+					50, 100, 4)
+height.class.m
+
+# reshape the vector into a matrix
+reclass.height.mat <- matrix(height.class.m, 
+							 ncol = 3, 
+							 byrow = TRUE)
+reclass.height.mat
+
+# reclassify our raster
+reclassified.chm <- reclassify(chm,
+							   reclass.height.mat)
+
+density(chm, 
+		main = "Canopy heights at Teakettle site\n with bin cutoffs in red",
+		xlab = "Height (m)")
+
+# plot vertical lines
+abline(v = reclass.height.mat[, 2], col = "red")
+
+# plot density figure with breaks to pdf file
+pdf(file = "TEAK_CHM_density_with_breaks.pdf", width = 6, height = 7)
+density(chm, 
+		main = "Canopy heights at Teakettle site\n with bin cutoffs in red",
+		xlab = "Height (m)")
+
+# plot vertical lines
+abline(v = reclass.height.mat[, 2], col = "red")
+dev.off()
+
+# Plot reclassified CHM raster
+par(xpd = FALSE, mar = c(5.1, 4.1, 4.1, 4.5))
+
+plot(reclassified.chm, 
+	 col = c("yellow", "orange", "red", "blue"), # hard coding colors
+	 main = "Canopy height classes\n Lower Teakettle",
+	 legend = FALSE)
+
+# enable plotting legend outside bounds
+par(xpd = TRUE)
+
+# legend x position
+leg.x <- par()$usr[2] + 20
+
+# legend y position
+leg.y <- par()$usr[4] + 50 - (abs(par()$usr[3] - par()$usr[4]) / 2)
+
+# add the legend
+legend(leg.x, leg.y, 
+	   legend = c("0-6 m", "6-30 m", "30-50 m", "50-100 m"),
+	   fill = c("yellow", "orange", "red", "blue"),
+	   bty = "n") # turns of the border around the legend
+
+
+pdf(file = "canopy_height_map_reclassified_TEAK.pdf",
+	width = 6, height = 6)
+# Plot reclassified CHM raster
+par(xpd = FALSE, mar = c(5.1, 4.1, 4.1, 4.5))
+
+plot(reclassified.chm, 
+	 col = c("yellow", "orange", "red", "blue"), # hard coding colors
+	 main = "Canopy height classes\n Lower Teakettle",
+	 legend = FALSE)
+
+# enable plotting legend outside bounds
+par(xpd = TRUE)
+
+# legend x position
+leg.x <- par()$usr[2] + 20
+
+# legend y position
+leg.y <- par()$usr[4] + 50 - (abs(par()$usr[3] - par()$usr[4]) / 2)
+
+# add the legend
+legend(leg.x, leg.y, 
+	   legend = c("0-6 m", "6-30 m", "30-50 m", "50-100 m"),
+	   fill = c("yellow", "orange", "red", "blue"),
+	   bty = "n") # turns of the border around the legend
+dev.off()
+
+# Save the reclassified raster to a GeoTIFF
+writeRaster(reclassified.chm,
+			filename = "reclassified_CHM_TEAK_GeoTIFF.tif",
+			format = "GTiff",
+			options = "COMPRESS=LZW",
+			overwrite = TRUE,
+			NAflag = -9999)
 
 ```
