@@ -25,7 +25,10 @@ Start by putting up objectives/tasks that students will be working though:
 # load library
 library("raster")
 
+# Setting some parameters
 chm_file <- "../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif"
+chosen.breaks <- c(6, 30, 50, 100)
+
 chm <- raster(chm_file)
 
 # quick sanity check
@@ -38,21 +41,50 @@ plot(chm)
 # check dinsity plot
 density(chm)
 
-# Reclassify raster values
-# make the matrix to reclassify
-# Lowest height class is 1
 
-height.class.m <- c(0, 6, 1,
-					6, 30, 2,
-					30, 50, 3,
-					50, 100, 4)
-height.class.m
 
-# reshape the vector into a matrix
-reclass.height.mat <- matrix(height.class.m, 
-							 ncol = 3, 
-							 byrow = TRUE)
-reclass.height.mat
+#############
+#############
+# function to create a reclassify matrix from a set of breaks
+create_height_class_matrix <- function(breaks) {
+	# Get the length of the breaks vector to 
+	# figure how many classes we will have
+	br.len <- length(breaks)
+	
+	# initialize height class vector with 0
+	height.class.m <- c(0)
+	
+	# for input of breaks = c(6, 30, 50, 100)
+	# we would like to make something like this:
+	
+	# c(0, 6, 1,
+	#	6, 30, 2,
+	#	30, 50, 3,
+	#	50, 100, 4)
+	
+	for (i in 1:br.len) {
+		height.class.m <- c(height.class.m, breaks[i - 1], breaks[i], i)
+	}
+	
+	reclass.height.mat <- matrix(height.class.m,
+								 ncol = 3,
+								 byrow = TRUE)	
+
+	reclass.height.mat
+}
+
+create_height_class_matrix(chosen.breaks)
+
+## a function to plot density of heights with chosen breaks
+# expects a chm raster, a title, and vector of breaks
+plot_chm_density <- function(rast.in, title, bins) {
+	density(rast.in, main = title, xlab = "Height (m)")
+	abline(v = bins, col = "red")
+}
+
+plot_chm_density(rast.in = chm, 
+				 title = "Canopy heights at Teakettle", 
+				 bins = chosen.breaks)
 
 # reclassify our raster
 reclassified.chm <- reclassify(chm,
