@@ -24,11 +24,12 @@ Start by putting up objectives/tasks that students will be working though:
 ```{r}
 # load library and functions
 library("raster")
+
 source("scripts/functions.R")
 
 # Setting some parameters
 chm_file <- "../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif"
-chosen.breaks <- c(6, 30, 50, 100)
+chosen.breaks <- c(6, 30, 40, 50, 60)
 
 chm <- raster(chm_file)
 
@@ -42,7 +43,7 @@ plot(chm)
 # check dinsity plot
 density(chm)
 
-create_height_class_matrix(chosen.breaks)
+reclass.height.mat <- create_height_class_matrix(chosen.breaks)
 
 
 plot_chm_density(rast.in = chm, 
