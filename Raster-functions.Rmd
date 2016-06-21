@@ -90,72 +90,86 @@ plot_chm_density(rast.in = chm,
 reclassified.chm <- reclassify(chm,
 							   reclass.height.mat)
 
-density(chm, 
-		main = "Canopy heights at Teakettle site\n with bin cutoffs in red",
-		xlab = "Height (m)")
 
-# plot vertical lines
-abline(v = reclass.height.mat[, 2], col = "red")
+# Function to save a pdf from a function that produces a figure
+make_pdf <- function(expr, filename, ..., verbose = TRUE) {
+    if (verbose) {
+        message("Creating: ", filename)
+    }
+    pdf(file = filename, ...)
+    on.exit(dev.off())
+    eval.parent(substitute(expr))
+}
 
 # plot density figure with breaks to pdf file
-pdf(file = "TEAK_CHM_density_with_breaks.pdf", width = 6, height = 7)
-density(chm, 
-		main = "Canopy heights at Teakettle site\n with bin cutoffs in red",
-		xlab = "Height (m)")
-
-# plot vertical lines
-abline(v = reclass.height.mat[, 2], col = "red")
-dev.off()
-
-# Plot reclassified CHM raster
-par(xpd = FALSE, mar = c(5.1, 4.1, 4.1, 4.5))
-
-plot(reclassified.chm, 
-	 col = c("yellow", "orange", "red", "blue"), # hard coding colors
-	 main = "Canopy height classes\n Lower Teakettle",
-	 legend = FALSE)
-
-# enable plotting legend outside bounds
-par(xpd = TRUE)
-
-# legend x position
-leg.x <- par()$usr[2] + 20
-
-# legend y position
-leg.y <- par()$usr[4] + 50 - (abs(par()$usr[3] - par()$usr[4]) / 2)
-
-# add the legend
-legend(leg.x, leg.y, 
-	   legend = c("0-6 m", "6-30 m", "30-50 m", "50-100 m"),
-	   fill = c("yellow", "orange", "red", "blue"),
-	   bty = "n") # turns of the border around the legend
+make_pdf(plot_chm_density(rast.in = chm, 
+				 title = "Canopy heights at Teakettle", 
+				 bins = chosen.breaks), 
+		 filename = "TEAK_CHM_density_with_breaks.pdf", 
+		 width = 6, height = 7)
 
 
-pdf(file = "canopy_height_map_reclassified_TEAK.pdf",
-	width = 6, height = 6)
-# Plot reclassified CHM raster
-par(xpd = FALSE, mar = c(5.1, 4.1, 4.1, 4.5))
 
-plot(reclassified.chm, 
-	 col = c("yellow", "orange", "red", "blue"), # hard coding colors
-	 main = "Canopy height classes\n Lower Teakettle",
-	 legend = FALSE)
 
-# enable plotting legend outside bounds
-par(xpd = TRUE)
+##########################################
+##########################################
+# function to plot the reclassified raster
 
-# legend x position
-leg.x <- par()$usr[2] + 20
+plot_reclassified_raster <- function(rast.in, site.name, breaks){
+	# this is a tricky bit because we need to out the legend
+	# outside of the plot region
+	
+	# Get colors for plotting
+	bin.colors <- rev(terrain.colors(length(breaks)))
+	
+	# make room for a legend
+	
+	par(xpd = FALSE, mar = c(5.1, 4.1, 4.1, 4.5))
+	
+	# plot
+	plot(rast.in,
+		 col = bin.colors,
+		 main = paste("Canopy height classes \n", site.name),
+		 legend = FALSE)
+	
+	# allow legend to plot outside of bounds
+	par(xpd = TRUE)
+	
+	# legend x
+	leg.x <- par()$usr[2] + 20
+	
+	# legend y
+	leg.y <- par()$usr[4] + 50 - (abs(par()$usr[3] - par()$usr[4]) / 2) 
+	
+	# create legend text
+	height.mat <- create_height_class_matrix(breaks)
+	
+	# initialize legend text
+	legend.text <- c()
+	
+	for (i in 1:length(breaks)) {
+		
+		legend.text <- c(legend.text, 
+						 paste0(height.mat[i, 1], "-", 
+						 	   height.mat[i, 2], " m"))
+	}
+	
+	# create the legend
+	legend(leg.x, leg.y,  # set x,y legend location
+		   legend = legend.text,  # make sure the order matches colors
+		   fill = bin.colors,
+		   bty = "n") # turn off border
+	
+	# turn off plotting outside of bounds
+	par(xpd = FALSE)
+}
 
-# legend y position
-leg.y <- par()$usr[4] + 50 - (abs(par()$usr[3] - par()$usr[4]) / 2)
 
-# add the legend
-legend(leg.x, leg.y, 
-	   legend = c("0-6 m", "6-30 m", "30-50 m", "50-100 m"),
-	   fill = c("yellow", "orange", "red", "blue"),
-	   bty = "n") # turns of the border around the legend
-dev.off()
+make_pdf(plot_reclassified_raster(reclassified.chm, 
+								  site.name = "Teakettle",
+								  breaks = chosen.breaks), 
+		 filename = "canopy_height_map_reclassified_TEAK.pdf",
+		 width = 6, height = 6)
 
 # Save the reclassified raster to a GeoTIFF
 writeRaster(reclassified.chm,
